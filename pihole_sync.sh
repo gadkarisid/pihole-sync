@@ -28,7 +28,7 @@ logger "pihole_sync: Node name is" $node_name
 if [[ $node_type == "master" ]]; then
 	logger "pihole_sync: Node type is master"
 	# Files to sync
-	FILES=(black.list blacklist.txt gravity.list regex.list whitelist.txt adlists.list)
+	FILES=(gravity.db)
 
 	# Sync specified files
 	for FILE in ${FILES[@]}
@@ -52,12 +52,11 @@ if [[ $node_type == "slave" ]]; then
 
 	logger "pihole_sync: Node type is slave"
 	# Files to sync
-	FILES=(black.list blacklist.txt regex.list whitelist.txt)
-	ADLISTS=(gravity.list adlists.list)
+	FILES=(gravity.db)
 
 	# Sync flags
-	SYNC1=0
-	SYNC2=0
+	SYNC=0
+	UPDATE_GRAVITY=0
 
 	# Determine whether to sync files
 	for FILE in ${FILES[@]}
@@ -65,7 +64,7 @@ if [[ $node_type == "slave" ]]; then
         	# Check if the remote file is newer than the local file
 	        if [[ "$REMOTE_DIR/$FILE" -nt "$LOCAL_DIR/$FILE" ]]; then
         	        # If the remote file is newer, then enable sync
-                	((SYNC1++))
+                	((SYNC++))
 	                logger "pihole_sync:" $FILE "needs to be synced"
         	else
                 	logger "pihole_sync:" $FILE "does not need to be synced"
@@ -73,34 +72,17 @@ if [[ $node_type == "slave" ]]; then
 	done
 
 	# Sync files
-	if [[ "$SYNC1" -ge 1 ]]; then
-	        for FILE in ${FILES[@]}
+	if [[ "$SYNC" -ge 1 ]]; then
+		for FILE in ${FILES[@]}
 	        do
 	                cp -u $REMOTE_DIR/$FILE $LOCAL_DIR/$FILE
-					logger "pihole_sync:" $FILE "has been copied"
+			logger "pihole_sync:" $FILE "has been copied"
+			((UPDATE_GRAVITY++))
 	        done
 	fi
-	
-	# Determine whether to sync files
-	for ADLISTS in ${ADLISTS[@]}
-	do
-        	# Check if the remote file is newer than the local file
-	        if [[ "$REMOTE_DIR/$ADLISTS" -nt "$LOCAL_DIR/$ADLISTS" ]]; then
-        	        # If the remote file is newer, then enable sync
-                	((SYNC2++))
-	                logger "pihole_sync:" $ADLIST "needs to be synced"
-        	else
-                	logger "pihole_sync:" $ADLIST "does not need to be synced"
-	        fi
-	done
 
 	# Sync files and update Gravity
-	if [[ "$SYNC2" -ge 1 ]]; then
-	        for ADLISTS in ${ADLISTS[@]}
-	        do
-	                cp -u $REMOTE_DIR/$ADLISTS $LOCAL_DIR/$ADLISTS
-					logger "pihole_sync:" $ADLIST "has been copied"
-	        done
+	if [[ "$UPDATE_GRAVITY" -ge 1 ]]; then
 	        logger "pihole_sync: Restarting DNS resolution"
 	        pihole restartdns
 	fi
