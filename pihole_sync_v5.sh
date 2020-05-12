@@ -84,7 +84,7 @@ if [[ $node_type == "slave" ]]; then
 	# Sync files and update Gravity
 	if [[ "$UPDATE_GRAVITY" -ge 1 ]]; then
 	        logger "pihole_sync: Restarting DNS resolution"
-	        pihole restartdns
+	        pihole restartdns reload-lists
 	fi
 fi
 
