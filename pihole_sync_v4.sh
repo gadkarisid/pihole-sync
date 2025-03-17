@@ -7,16 +7,16 @@
 ###########################
 
 # Define PiHole node name
-node_name=pihole01
+node_name=<ADD NODE NAME>
 
 # Designate whether this node is the 'master' or 'slave'
-node_type=master
+node_type=<ADD NODE ROLE>
 
 # Local PiHole directory
 LOCAL_DIR=/etc/pihole
 
 # Remote Rsync directory
-REMOTE_DIR=/media/pihole_sync
+REMOTE_DIR=<ADD REMOTE PATH>
 
 ###########################
 #### END CONFIGURATION ####
