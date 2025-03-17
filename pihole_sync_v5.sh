@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# This script is compatible with PiHole v5 only!
+
 ###########################
 ### BEGIN CONFIGURATION ###
 ###########################

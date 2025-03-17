@@ -1,22 +1,22 @@
 #!/bin/bash
 
-# This script is compatible with PiHole v4 only!
+# This script is compatible with PiHole v6 only!
 
 ###########################
 ### BEGIN CONFIGURATION ###
 ###########################
 
 # Define PiHole node name
-node_name=pihole01
+node_name=<ADD NODE NAME>
 
 # Designate whether this node is the 'master' or 'slave'
-node_type=master
+node_type=<ADD ROLE>
 
 # Local PiHole directory
 LOCAL_DIR=/etc/pihole
 
 # Remote Rsync directory
-REMOTE_DIR=/media/pihole_sync
+REMOTE_DIR=<ADD REMOTE PATH>
 
 ###########################
 #### END CONFIGURATION ####
@@ -30,7 +30,7 @@ logger "pihole_sync: Node name is" $node_name
 if [[ $node_type == "master" ]]; then
 	logger "pihole_sync: Node type is master"
 	# Files to sync
-	FILES=(black.list blacklist.txt gravity.list regex.list whitelist.txt adlists.list)
+	FILES=(gravity.db)
 
 	# Sync specified files
 	for FILE in ${FILES[@]}
@@ -45,21 +45,32 @@ if [[ $node_type == "master" ]]; then
 			logger "pihole_sync:" $FILE "does not need to be synced"
 	        fi
 	done
+
+	# Force sync
+	if [[ "$1" == "-f" ]]; then
+		logger "pihole_sync: Forcing resync!"
+		for FILE in ${FILES[@]}
+		do
+			logger "pihole_sync:" $FILE "will be synced"
+			cp $LOCAL_DIR/$FILE $REMOTE_DIR/$FILE
+			logger "pihole_sync:" $FILE "has been copied"
+		done
+	fi
 fi
 
 # If this is the slave node
 if [[ $node_type == "slave" ]]; then
-	# Pause while the master node completes its sync
-	sleep 45
-
 	logger "pihole_sync: Node type is slave"
+	logger "pihole_sync: Sleeping for 60 seconds..."
+	# Pause while the master node completes its sync
+	sleep 60
+
 	# Files to sync
-	FILES=(black.list blacklist.txt regex.list whitelist.txt)
-	ADLISTS=(gravity.list adlists.list)
+	FILES=(gravity.db)
 
 	# Sync flags
-	SYNC1=0
-	SYNC2=0
+	SYNC=0
+	UPDATE_GRAVITY=0
 
 	# Determine whether to sync files
 	for FILE in ${FILES[@]}
@@ -67,7 +78,7 @@ if [[ $node_type == "slave" ]]; then
         	# Check if the remote file is newer than the local file
 	        if [[ "$REMOTE_DIR/$FILE" -nt "$LOCAL_DIR/$FILE" ]]; then
         	        # If the remote file is newer, then enable sync
-                	((SYNC1++))
+                	((SYNC++))
 	                logger "pihole_sync:" $FILE "needs to be synced"
         	else
                 	logger "pihole_sync:" $FILE "does not need to be synced"
@@ -75,36 +86,30 @@ if [[ $node_type == "slave" ]]; then
 	done
 
 	# Sync files
-	if [[ "$SYNC1" -ge 1 ]]; then
-	        for FILE in ${FILES[@]}
+	if [[ "$SYNC" -ge 1 ]]; then
+		for FILE in ${FILES[@]}
 	        do
-	                cp -u $REMOTE_DIR/$FILE $LOCAL_DIR/$FILE
-					logger "pihole_sync:" $FILE "has been copied"
+	            cp -u $REMOTE_DIR/$FILE $LOCAL_DIR/$FILE
+				logger "pihole_sync:" $FILE "has been copied"
+				((UPDATE_GRAVITY++))
 	        done
 	fi
-
-	# Determine whether to sync files
-	for ADLISTS in ${ADLISTS[@]}
-	do
-        	# Check if the remote file is newer than the local file
-	        if [[ "$REMOTE_DIR/$ADLISTS" -nt "$LOCAL_DIR/$ADLISTS" ]]; then
-        	        # If the remote file is newer, then enable sync
-                	((SYNC2++))
-	                logger "pihole_sync:" $ADLIST "needs to be synced"
-        	else
-                	logger "pihole_sync:" $ADLIST "does not need to be synced"
-	        fi
-	done
-
+	
+	# Force sync
+	if [[ "$1" == "-f" ]]; then
+		logger "pihole_sync: Forcing resync!"
+		for FILE in ${FILES[@]}
+		do
+			cp $REMOTE_DIR/$FILE $LOCAL_DIR/$FILE
+            logger "pihole_sync:" $FILE "has been copied"
+			((UPDATE_GRAVITY++))
+		done
+	fi
+	
 	# Sync files and update Gravity
-	if [[ "$SYNC2" -ge 1 ]]; then
-	        for ADLISTS in ${ADLISTS[@]}
-	        do
-	                cp -u $REMOTE_DIR/$ADLISTS $LOCAL_DIR/$ADLISTS
-					logger "pihole_sync:" $ADLIST "has been copied"
-	        done
+	if [[ "$UPDATE_GRAVITY" -ge 1 ]]; then
 	        logger "pihole_sync: Restarting DNS resolution"
-	        pihole restartdns
+	        pihole reloadlists
 	fi
 fi
 
