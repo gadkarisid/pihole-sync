@@ -9,7 +9,7 @@
 # Define PiHole node name
 node_name=<ADD NODE NAME>
 
-# Designate whether this node is the 'master' or 'slave'
+# Designate whether this node is the 'primary' or 'secondary'
 node_type=<ADD ROLE>
 
 # Local PiHole directory
@@ -26,9 +26,9 @@ REMOTE_DIR=<ADD REMOTE PATH>
 logger "pihole_sync: PiHole sync starting"
 logger "pihole_sync: Node name is" $node_name
 
-# If this is the master node
-if [[ $node_type == "master" ]]; then
-	logger "pihole_sync: Node type is master"
+# If this is the primary node
+if [[ $node_type == "primary" ]]; then
+	logger "pihole_sync: Node type is primary"
 	# Files to sync
 	FILES=(gravity.db)
 
@@ -58,11 +58,11 @@ if [[ $node_type == "master" ]]; then
 	fi
 fi
 
-# If this is the slave node
-if [[ $node_type == "slave" ]]; then
-	logger "pihole_sync: Node type is slave"
+# If this is the secondary node
+if [[ $node_type == "secondary" ]]; then
+	logger "pihole_sync: Node type is secondary"
 	logger "pihole_sync: Sleeping for 60 seconds..."
-	# Pause while the master node completes its sync
+	# Pause while the primary node completes its sync
 	sleep 60
 
 	# Files to sync
