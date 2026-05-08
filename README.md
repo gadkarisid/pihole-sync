@@ -58,5 +58,3 @@ sudo bash pihole_sync.sh -f
 ### Logs
 
 Each run appends syslog entries to `pihole_sync-<NODE_NAME>.log` in `REMOTE_DIR`, allowing both nodes' logs to be reviewed from the NAS without logging into each node individually. Entries are also written to the local syslog via `logger`.
-
----
