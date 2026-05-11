@@ -47,11 +47,15 @@ sqlite_backup() {
 
 write_log() {
     local current_lines
+    local log_file
     current_lines=$(wc -l < /var/log/syslog)
+    log_file="${REMOTE_DIR}/pihole_sync-${NODE_NAME}-$(date '+%Y-%m-%d').log"
     local new_lines=$(( current_lines - SYSLOG_START_LINE ))
     if [[ "$new_lines" -gt 0 ]]; then
         tail -n "$new_lines" /var/log/syslog | \
-            grep -F "${LOG_TAG}" >> "${REMOTE_DIR}/pihole_sync-${NODE_NAME}.log" || true
+            grep -F "${LOG_TAG}" >> "$log_file" || true
+        find "${REMOTE_DIR}" -maxdepth 1 -name "pihole_sync-${NODE_NAME}-*.log" \
+            ! -name "pihole_sync-${NODE_NAME}-$(date '+%Y-%m-%d').log" -delete
     fi
 }
 
@@ -68,6 +72,7 @@ sync_primary() {
         local local_file="${LOCAL_DIR}/${FILE}"
         local remote_file="${REMOTE_DIR}/${FILE}"
         local temp_file="${TEMP_DIR}/${FILE}"
+        local sidecar_file="${remote_file}.sha256"
 
         [[ -f "$local_file" ]] || die "Source file not found: ${local_file}"
 
@@ -80,17 +85,20 @@ sync_primary() {
         if [[ "$force" == "-f" ]]; then
             log "Force flag set, syncing ${FILE}"
             cp -- "$temp_file" "$remote_file"
+            echo "$local_sum" > "$sidecar_file"
             log "${FILE} synced (forced)"
         elif [[ ! -f "$remote_file" ]]; then
             log "${FILE} not present on NAS, syncing"
             cp -- "$temp_file" "$remote_file"
+            echo "$local_sum" > "$sidecar_file"
             log "${FILE} synced (initial)"
         else
             local remote_sum
-            remote_sum=$(checksum "$remote_file")
+            remote_sum=$(cat "$sidecar_file" 2>/dev/null || echo "none")
             if [[ "$local_sum" != "$remote_sum" ]]; then
                 log "${FILE} content differs, syncing"
                 cp -- "$temp_file" "$remote_file"
+                echo "$local_sum" > "$sidecar_file"
                 log "${FILE} synced"
             else
                 log "${FILE} up to date, skipping"
@@ -125,6 +133,7 @@ sync_secondary() {
     for FILE in "${FILES[@]}"; do
         local local_file="${LOCAL_DIR}/${FILE}"
         local remote_file="${REMOTE_DIR}/${FILE}"
+        local sidecar_file="${remote_file}.sha256"
 
         [[ -f "$remote_file" ]] || die "Remote file not found: ${remote_file}"
 
@@ -141,7 +150,7 @@ sync_secondary() {
         else
             local local_sum remote_sum
             local_sum=$(checksum "$local_file")
-            remote_sum=$(checksum "$remote_file")
+            remote_sum=$(cat "$sidecar_file" 2>/dev/null || echo "none")
             if [[ "$local_sum" != "$remote_sum" ]]; then
                 log "${FILE} content differs, syncing"
                 sudo cp -- "$remote_file" "$local_file"
